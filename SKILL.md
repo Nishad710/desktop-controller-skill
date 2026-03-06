@@ -76,35 +76,71 @@ Best for: Email webmail, Slack, Discord, Teams (web), VS Code, Notion, any brows
 4. DOM inspection for finding the right selectors
 5. 10-50x faster than screenshot+coordinate approach
 
-**Playwright Quick Start for Web Apps (e.g., sending email):**
-```javascript
-// Connect to existing Chrome (must be launched with --remote-debugging-port=9222)
-const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
-const page = browser.contexts()[0].pages()[0]; // Get current tab
+### Chrome CDP Setup (REQUIRED for browser control)
 
-// Example: Compose email in Coremail (Tsinghua email)
-await page.click('span:has-text("写信")');           // Click compose — instant!
-await page.fill('input[name="to"]', '575860760@qq.com');  // Fill recipient
-await page.fill('.compose-body', '今天不去吃饭了');          // Fill body
-await page.click('button:has-text("发送")');                // Send
-```
+The user has a pre-configured junction and batch file:
+- **Junction**: `C:\ChromeCDP` → `C:\Users\ASUS\AppData\Local\Google\Chrome\User Data`
+- **Launcher**: `C:\Users\ASUS\Desktop\Chrome-CDP.bat` (double-click to start)
+- **Flags**: `--remote-debugging-port=9222 --user-data-dir="C:\ChromeCDP" --profile-directory=Default`
 
-**vs. Screenshot approach (old, slow):**
-```
-Step 1: Take screenshot (2s)
-Step 2: AI analyzes image to find "写信" button position (5s)
-Step 3: Click at guessed coordinates (80, 145) — might miss! (1s)
-Step 4: Take screenshot again to verify (2s)
-Step 5: Repeat for each UI element...
-Total: 30-60 seconds for a simple email
-```
-
-**How to connect to existing Chrome:**
+**Step 1: Ensure Chrome is running with CDP**
 ```bash
-# First, restart Chrome with debugging port enabled:
-chrome.exe --remote-debugging-port=9222
-# Then Playwright can connect to it and control any tab
+# Check if CDP is already active
+curl --noproxy localhost -s http://localhost:9222/json/version
+# If not running, launch via batch file or directly:
+MSYS_NO_PATHCONV=1 "/c/Program Files/Google/Chrome/Application/chrome.exe" \
+  --remote-debugging-port=9222 --user-data-dir="C:\\ChromeCDP" \
+  --profile-directory=Default --restore-last-session > /dev/null 2>&1 &
 ```
+
+**Step 2: Connect with Playwright**
+```javascript
+// CRITICAL: Must bypass proxy for localhost
+process.env.NO_PROXY = 'localhost,127.0.0.1';
+const { chromium } = require('playwright');
+const browser = await chromium.connectOverCDP('http://localhost:9222', { timeout: 60000 });
+const ctx = browser.contexts()[0];
+const page = await ctx.newPage(); // or ctx.pages()[0] for existing tab
+```
+
+**Step 3: Automate anything**
+```javascript
+await page.goto('https://example.com');
+await page.click('#button');
+await page.fill('input[name="email"]', 'test@test.com');
+await page.screenshot({ path: 'verify.png' });
+```
+
+### Proven Web App Patterns
+
+**Coremail (Tsinghua email mails.tsinghua.edu.cn):**
+- Buttons have spaces: "写 信", "发 送" — use regex `/^写\s*信$/` in `page.evaluate`
+- To field: click 150px right of "收件人" label → `keyboard.type(email)` → Enter
+- Subject: `input[name="subject"]` — set `.value` + `dispatchEvent(new Event('input'))`
+- Body: find iframe with `document.body.contentEditable === 'true'` → set `innerHTML`
+- Send button class: `j-tbl-send`
+- Wait for "收件箱" text to confirm inbox loaded after login
+
+**General pattern for complex web apps:**
+```javascript
+// When CSS selectors fail, use page.evaluate to walk the DOM
+const result = await page.evaluate(() => {
+  const els = document.querySelectorAll('span, button, div');
+  for (const el of els) {
+    if (/^发\s*送$/.test(el.textContent?.trim()) && el.offsetParent !== null) {
+      el.click();
+      return true;
+    }
+  }
+  return false;
+});
+```
+
+### Important Notes
+- **Proxy**: User has v2ray at 127.0.0.1:2080. Always set `NO_PROXY=localhost,127.0.0.1` before Node.js commands
+- **Don't call browser.close()** — it kills the user's Chrome! Use `process.exit(0)` instead
+- **Playwright is at** `D:\cc-workspace\node_modules\playwright` (already installed)
+- **DPAPI**: Junction approach causes some decrypt warnings (harmless), saved passwords are lost but sessions work after re-login
 
 ## Supported Applications
 
