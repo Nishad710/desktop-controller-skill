@@ -78,20 +78,28 @@ Best for: Email webmail, Slack, Discord, Teams (web), VS Code, Notion, any brows
 
 ### Chrome CDP Setup (REQUIRED for browser control)
 
-The user has a pre-configured junction and batch file:
-- **Junction**: `C:\ChromeCDP` → `C:\Users\ASUS\AppData\Local\Google\Chrome\User Data`
-- **Launcher**: `C:\Users\ASUS\Desktop\Chrome-CDP.bat` (double-click to start)
-- **Flags**: `--remote-debugging-port=9222 --user-data-dir="C:\ChromeCDP" --profile-directory=Default`
+**⚠️ CRITICAL RULE: NEVER kill/restart Chrome (`taskkill /IM chrome.exe`). This destroys all user's open tabs!**
 
-**Step 1: Ensure Chrome is running with CDP**
+The user's Chrome is configured to ALWAYS start with CDP enabled:
+- Chrome shortcut already includes `--remote-debugging-port=9222` flags
+- CDP is available whenever Chrome is running — no restart needed
+
+**Step 1: Check if CDP is available (ALWAYS do this first)**
 ```bash
-# Check if CDP is already active
 curl --noproxy localhost -s http://localhost:9222/json/version
-# If not running, launch via batch file or directly:
-MSYS_NO_PATHCONV=1 "/c/Program Files/Google/Chrome/Application/chrome.exe" \
-  --remote-debugging-port=9222 --user-data-dir="C:\\ChromeCDP" \
-  --profile-directory=Default --restore-last-session > /dev/null 2>&1 &
 ```
+
+**If CDP responds** → Great! Go to Step 2.
+
+**If CDP does NOT respond** (Chrome running without CDP, or Chrome not running):
+- **DO NOT** kill Chrome. Instead, tell the user:
+  "Chrome 没有开启调试端口。请关闭 Chrome，然后双击桌面的 Chrome-CDP.bat 重新打开。"
+- Or if Chrome is not running at all, launch it fresh (safe, no tabs to lose):
+  ```bash
+  MSYS_NO_PATHCONV=1 "/c/Program Files/Google/Chrome/Application/chrome.exe" \
+    --remote-debugging-port=9222 --user-data-dir="C:\\ChromeCDP" \
+    --profile-directory=Default --restore-last-session > /dev/null 2>&1 &
+  ```
 
 **Step 2: Connect with Playwright**
 ```javascript
@@ -137,10 +145,12 @@ const result = await page.evaluate(() => {
 ```
 
 ### Important Notes
+- **⚠️ NEVER `taskkill /IM chrome.exe`** — this destroys all user's open tabs and work!
+- **⚠️ NEVER `browser.close()`** — it kills the user's Chrome! Use `process.exit(0)` instead
 - **Proxy**: User has v2ray at 127.0.0.1:2080. Always set `NO_PROXY=localhost,127.0.0.1` before Node.js commands
-- **Don't call browser.close()** — it kills the user's Chrome! Use `process.exit(0)` instead
 - **Playwright is at** `D:\cc-workspace\node_modules\playwright` (already installed)
 - **DPAPI**: Junction approach causes some decrypt warnings (harmless), saved passwords are lost but sessions work after re-login
+- **If CDP not available**: Ask user to restart Chrome via `Chrome-CDP.bat`, NEVER force-kill
 
 ## Supported Applications
 
