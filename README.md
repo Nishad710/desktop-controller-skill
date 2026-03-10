@@ -21,6 +21,27 @@
 | **Platform** | Cloud only | **Local (your machine)** |
 | **Cost** | Codex subscription | Free & open source |
 
+## Demo
+
+```bash
+$ python scripts/desktop_control.py list-apps
+Supported applications:
+  weixin       WeChat                process=Weixin       mode=win32   search=Ctrl+F
+  wxwork       WeCom (企业微信)        process=WXWork       mode=win32   search=Ctrl+F
+  dingtalk     DingTalk (钉钉)        process=DingTalk     mode=win32   search=Ctrl+K
+  feishu       Feishu/Lark (飞书)     process=Feishu       mode=win32   search=Ctrl+K
+  qq           QQ                    process=QQ           mode=win32   search=Ctrl+F
+  telegram     Telegram              process=Telegram     mode=win32   search=Ctrl+K
+  slack        Slack                 process=slack        mode=win32   search=Ctrl+K
+  teams        Microsoft Teams       process=ms-teams     mode=win32   search=Ctrl+E
+
+$ python scripts/desktop_control.py find-window --app weixin
+{"found": true, "process": "Weixin", "left": 856, "top": 185, "width": 462, "height": 640}
+
+$ python scripts/desktop_control.py send-message --app weixin --contact "文件传输助手" --message "Hello from AI 🤖"
+✓ Message sent to 文件传输助手 via WeChat
+```
+
 ## Architecture
 
 ```
